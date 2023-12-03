@@ -11,7 +11,7 @@ const CRON_TASKS: any = {
 }
 
 export class CronManager {
-    private cronJobs: ScheduledTask[] = [];
+    private cronJobs: {id: number, job: ScheduledTask}[]= [];
 
     public constructor(){
         this.initializeJobs();
@@ -21,24 +21,7 @@ export class CronManager {
             this.cronJobs = [];
             const crons = await Db.getInstance().query(`select * from ${CRON_DB_NAME}`) as App.DbCron[];
             crons.forEach(cronData => {
-                if(CRON_TASKS.hasOwnProperty(cronData.name)){
-                    const cronClass = new CRON_TASKS[cronData.name]() as App.CronTask;
-                    const job = this.addJob(cronData.schedule, async () => {
-                        //Start Cron
-
-                        //Start Cron
-                        await cronClass.handle();
-
-                        //End Cron
-                        const now = new Date();
-                        const formattedDate = now.toISOString().slice(0, 19).replace("T", " ");
-                        await Db.getInstance().query(`UPDATE ${CRON_DB_NAME} SET lastEnd = '${formattedDate}' WHERE id = ${cronData.id}`);
-                        //End Cron
-                    });
-                    if(cronData.is_active === 1)
-                        job.start();
-                    this.cronJobs.push(job);
-                }
+                this.handleJob(cronData);
             });
 
                 
@@ -47,14 +30,36 @@ export class CronManager {
         }
 
     }
-    public addJob = (schedule: string, task: string | ((now: Date | "manual" | "init") => void)) => {
+
+    private handleJob = (cronData: App.DbCron) => {
+        if(CRON_TASKS.hasOwnProperty(cronData.name)){
+            const cronClass = new CRON_TASKS[cronData.name]() as App.CronTask;
+            const job = this.addJob(cronData,cronData.schedule, async () => {
+                //Start Cron
+
+                //Start Cron
+                await cronClass.handle();
+
+                //End Cron
+                const now = new Date();
+                const formattedDate = now.toISOString().slice(0, 19).replace("T", " ");
+                await Db.getInstance().query(`UPDATE ${CRON_DB_NAME} SET lastEnd = '${formattedDate}' WHERE id = ${cronData.id}`);
+                //End Cron
+            });
+            if(cronData.is_active === 1)
+                job.start();
+        }
+    }
+
+
+    public addJob = (cronData: App.DbCron,schedule: string, task: string | ((now: Date | "manual" | "init") => void)) => {
         const job = cron.schedule(schedule, task);
-        this.cronJobs.push(job);
+        this.cronJobs.push({id: cronData.id, job});
         return job;
     }
     public getCronJobs = () => this.cronJobs;
 
     public startJobById = (id: number) => {
-        //TODO check if is active an then start
+        this.cronJobs.find(e => e.id === id)?.job.start();
     }
 }

@@ -10,6 +10,7 @@ import userRoute from "./routes/user/user.js";
 import { Server } from 'socket.io';
 import dotenv from 'dotenv';
 import { CronManager } from "./CronManager.js";
+import handleSocketEvents from "./events/index.js";
 
 
 dotenv.config();
@@ -34,11 +35,11 @@ const PORT = process.env.PORT ?? 3000;
 
 //TODO cron jobs
 
-const crons = new CronManager();
+new CronManager();
 
 // Db.getInstance().query("select * from cats");
 
-// handleSocketEvents(io);
+handleSocketEvents(io);
 
 
 server.listen(PORT,() => {
