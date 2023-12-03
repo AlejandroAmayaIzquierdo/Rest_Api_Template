@@ -7,11 +7,14 @@ import logger from "morgan";
 import { createServer } from 'node:http';
 import v1Routes from "./routes/v1/index.js";
 import userRoute from "./routes/user/user.js";
-import { addCron, addCronJob, startCronJobs } from "./cron.js";
-import { deleteInvalidSessions } from "./crons/userCrons.js";
 import { Server } from 'socket.io';
-import handleSocketEvents from "./events/index.js";
+import dotenv from 'dotenv';
+import { CronManager } from "./CronManager.js";
 
+
+dotenv.config();
+
+export const {DB_HOST,DB_USER,DB_PASS,BD_DATABASE_NAME} = process.env;
 
 const app = Express();
 app.disable('x-powered-by');
@@ -29,12 +32,13 @@ app.use('/user',userRoute);
 
 const PORT = process.env.PORT ?? 3000;
 
+//TODO cron jobs
 
-addCron(deleteInvalidSessions);
+const crons = new CronManager();
 
-startCronJobs();
+// Db.getInstance().query("select * from cats");
 
-handleSocketEvents(io);
+// handleSocketEvents(io);
 
 
 server.listen(PORT,() => {

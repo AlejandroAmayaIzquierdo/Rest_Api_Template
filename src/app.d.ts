@@ -8,6 +8,18 @@ declare namespace App {
 	}
 	
 	type categories = "cats" | "dogs";
+
+	interface CronTask {
+		handle();
+	}
+
+	interface DbCron {
+		id: number;
+		name: string;
+		schedule: string;
+		is_active: number;
+		lastEnd: string | null;
+	}
 }
 
 

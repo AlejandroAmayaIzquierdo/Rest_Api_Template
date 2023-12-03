@@ -1,6 +1,6 @@
 ﻿import { Request, Response } from "express";
 import { randomCatFact } from "../services/catsServices.js";
-import auth from "../database/lucia.js";
+import { AuthManager } from "../database/AuthManager.js";
 
 
 const CATEGORY = "cats";
@@ -9,6 +9,9 @@ const CATEGORY = "cats";
 export const getRandomCatFact = async (request: Request,response: Response) => {
     try {
         const token = request.get('authorization') as string;
+
+        const auth = AuthManager.getInstance().getAuth();
+        if(!auth) return;
     
         const isValid = await auth.validateSession(token);
         if(!isValid) response.status(402).send({status: 0, error: "AUTH_INVALID_SESSION_ID"});

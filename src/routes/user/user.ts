@@ -1,11 +1,13 @@
 ﻿import express from "express";
-import auth from "../../database/lucia.js";
+import { AuthManager } from "../../database/AuthManager.js";
 
 
 const userRoute = express.Router();
 
 
 userRoute.post("/signup", async (req, res) => {
+	const auth = AuthManager.getInstance().getAuth();
+	if(!auth) return;
 	const { userName, password } = req.body;
 	if (
 		typeof userName !== "string" ||
@@ -64,6 +66,8 @@ userRoute.post("/signup", async (req, res) => {
 
 userRoute.post('/login', async (req,res) => {
 	try {
+		const auth = AuthManager.getInstance().getAuth();
+		if(!auth) return;
 		const { userName, password } = req.body as Api.RegisterUserBody;
 		console.log(userName,password);
 	
