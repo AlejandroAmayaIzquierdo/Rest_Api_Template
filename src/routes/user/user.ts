@@ -1,100 +1,136 @@
-﻿import express from "express";
-import { AuthManager } from "../../database/AuthManager.js";
-
+﻿import express from 'express';
+import {
+  logInController,
+  oauthController,
+  oauthGitController,
+  oauthTwitchController,
+  signupController,
+} from '@controllers/userController.js';
+import { AuthManager } from '@DB/AuthManager.js';
+import { Db } from '@DB/dbConnection.js';
 
 const userRoute = express.Router();
 
-
-userRoute.post("/signup", async (req, res) => {
-	const auth = AuthManager.getInstance().getAuth();
-	if(!auth) return;
-	const { userName, password } = req.body;
-	if (
-		typeof userName !== "string" ||
-		userName.length < 4 ||
-		userName.length > 31
-	) {
-		const response: Api.Response = {
-			status: 0,
-			error: "Invalid username"
-		}
-		return res.status(400).send(response);
-	}
-	if (
-		typeof password !== "string" ||
-		password.length < 6 ||
-		password.length > 255
-	) {
-		const response: Api.Response = {
-			status: 0,
-			error: "Invalid password"
-		}
-		return res.status(400).send(response);
-	}
-	try {
-		const user = await auth.createUser({
-			key: {
-				providerId: "id", // auth method
-				providerUserId: userName.toLowerCase(), // unique id when using "username" auth method
-				password // hashed by Lucia
-			},
-			attributes: {
-				userName
-			}
-		});
-		const session = await auth.createSession({
-			userId: user.userId,
-			attributes: {}
-		});
-		console.log(session);
-		if(session === null){
-			const response: Api.Response = {
-				status: 0,
-				error: "Error while creating the session",
-			}
-			return res.status(402).send(response);
-		}
-		const response: Api.Response = {
-			status: 1,
-			result: session
-		}
-		return res.status(202).send(response);
-	} catch (e) {
-		return res.status(500).send({status : 0 , error: e});
-	}
+userRoute.post('/signup', async (req, res) => {
+  try {
+    const session = await signupController(req);
+    const response: Api.Response = {
+      status: 1,
+      result: session,
+    };
+    return res.status(202).send(response);
+  } catch (e) {
+    const error = e as Api.Error;
+    return res.status(error.code).send({ status: 0, error: error.message });
+  }
 });
 
-userRoute.post('/login', async (req,res) => {
-	try {
-		const auth = AuthManager.getInstance().getAuth();
-		if(!auth) return;
-		const { userName, password } = req.body as Api.RegisterUserBody;
-		console.log(userName,password);
-	
-		const user = await auth.useKey(
-			"id",
-			userName.toLocaleLowerCase(),
-			password
-		);
-		const session = await auth.createSession({
-			userId: user.userId,
-			attributes: {}
-		});
-		if(!session) {
-			const response: Api.Response = {
-				status: 0,
-				error: "Error while logIn"
-			}
-			return res.status(402).send(response);
-		}
-		const response: Api.Response = {
-			status: 1,
-			result: session
-		}
-		return res.status(202).send(response);
-	} catch (err) {
-		return res.status(500).send({status : 0 , error: err});
-	}
+userRoute.post('/oauth', async (req, res) => {
+  try {
+    const session = await oauthController(req);
+    const response: Api.Response = {
+      status: 1,
+      result: session,
+    };
+    return res.status(202).send(response);
+  } catch (err) {
+    // const error = err as Api.Error;
+    return res.status(500).send({ status: 0, error: `${err}` });
+  }
+});
+
+userRoute.post('/oauthGit', async (req, res) => {
+  try {
+    const session = await oauthGitController(req);
+    const response: Api.Response = {
+      status: 1,
+      result: session,
+    };
+    return res.status(202).send(response);
+  } catch (err) {
+    console.log(err);
+    // const error = err as Api.Error;
+    return res.status(500).send({ status: 0, error: `${err}` });
+  }
+});
+
+userRoute.post('/oauthTwitch', async (req, res) => {
+  try {
+    const session = await oauthTwitchController(req);
+    const response: Api.Response = {
+      status: 1,
+      result: session,
+    };
+    return res.status(202).send(response);
+  } catch (err) {
+    // const error = err as Api.Error;
+    return res.status(500).send({ status: 0, error: `${err}` });
+  }
+});
+
+userRoute.post('/login', async (req, res) => {
+  try {
+    const session = await logInController(req);
+    const response: Api.Response = {
+      status: 1,
+      result: session,
+    };
+    return res.status(202).send(response);
+  } catch (e) {
+    const error = e as Api.Error;
+    return res.status(error.code).send({ status: 0, error: error.message });
+  }
+});
+
+userRoute.put('/logout', async (req, res) => {
+  try {
+    const auth = req.headers.authorization;
+    if (!auth)
+      return res.status(500).send({ status: 0, error: 'No auth to close' });
+
+    await Db.getInstance().query(
+      `DELETE FROM user_session WHERE id = '${auth}'`,
+    );
+
+    return res.status(200).send({ status: 1, result: 'Logged Out' });
+  } catch (err) {
+    console.log(err);
+    return res.status(500).send({ status: 0, error: err });
+  }
+});
+
+userRoute.get('/currentUser', async (req, res) => {
+  //TODO fix this
+  try {
+    const auth = req.headers.authorization;
+    if (!auth)
+      return res.status(500).send({ status: 0, error: 'Unauthorized User' });
+
+    const session = (await AuthManager.getInstance()
+      .getAuth()
+      ?.validateSession(auth)) as Lucia.Session;
+    if (!session)
+      return res.status(500).send({ status: 0, error: 'Unauthorized User' });
+
+    const u = (await AuthManager.getInstance()
+      .getAuth()
+      ?.getAllUserKeys(session.user.userId)) as Lucia.User[];
+    if (!u || u.length === 0)
+      return res
+        .status(500)
+        .send({ status: 0, error: 'Internal Server Error' });
+
+    //TODO reload access tokens of providers. To update user info like profilePic, profileName
+
+    const userData = (await Db.getInstance().query(
+      `SELECT id as userId,userName,profilePic,profileName FROM users WHERE id = '${session.user.userId}'`,
+    )) as Api.User[];
+    const user = userData.length > 0 ? userData[0] : session.user;
+    return res.status(200).send({ status: 1, result: user });
+  } catch (err) {
+    console.log(err);
+    return res.status(500).send({ status: 0, error: err });
+  }
 });
 
 export default userRoute;
