@@ -10,4 +10,6 @@ Template of rest api server made on nodejs.
 - [x] websockets.
 - [x] rooms of websockets.
 - [x] access to mysql db.
+- [X] Storage endpoint (upload files)
+- [X] Room Manger
 - [ ] workers "threads" for better performance.
