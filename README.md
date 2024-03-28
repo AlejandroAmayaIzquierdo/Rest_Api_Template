@@ -12,4 +12,6 @@ Template of rest api server made on nodejs.
 - [x] access to mysql db.
 - [X] Storage endpoint (upload files)
 - [X] Room Manger
+- [ ] Docker deploy
+- [ ] Rooms Endpoints (utilities for the management of rooms)
 - [ ] workers "threads" for better performance.
